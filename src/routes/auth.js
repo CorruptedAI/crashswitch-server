@@ -93,7 +93,11 @@ router.post("/verify", async (req, res) => {
     });
 
     await logAttempt(client, key, hwid, ip, true, "ok");
-    return res.json({ token, expiresIn: 30 * 60 });
+    return res.json({ 
+      token, 
+      expiresIn: 30 * 60,
+      keyExpiresAt: record.expires_at
+    });
 
   } catch (err) {
     console.error("Auth error:", err);
