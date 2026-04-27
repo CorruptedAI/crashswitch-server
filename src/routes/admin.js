@@ -77,6 +77,38 @@ router.delete("/keys/:key", requireAdmin, async (req, res) => {
   }
 });
 
+// ── POST /admin/keys/:key/unrevoke — Restore a revoked key ───────────────────
+router.post("/keys/:key/unrevoke", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE license_keys SET revoked = FALSE WHERE key_value = $1 RETURNING id`,
+      [req.params.key]
+    );
+    if (result.rowCount === 0)
+      return res.status(404).json({ error: "Key not found" });
+    res.json({ success: true, message: `Key ${req.params.key} is now active again` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /admin/keys/:key/permanent — Permanently delete a key ──────────────
+router.delete("/keys/:key/permanent", requireAdmin, async (req, res) => {
+  try {
+    // Also delete associated auth logs
+    await pool.query(`DELETE FROM auth_log WHERE key_value = $1`, [req.params.key]);
+    const result = await pool.query(
+      `DELETE FROM license_keys WHERE key_value = $1 RETURNING id`,
+      [req.params.key]
+    );
+    if (result.rowCount === 0)
+      return res.status(404).json({ error: "Key not found" });
+    res.json({ success: true, deleted: req.params.key });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /admin/keys/:key/reset-hwid — Unbind HWID ───────────────────────────
 // Useful if a user gets a new PC
 router.post("/keys/:key/reset-hwid", requireAdmin, async (req, res) => {
