@@ -43,6 +43,16 @@ router.post("/verify", async (req, res) => {
 
     const record = result.rows[0];
 
+    // --- Check 0: HWID not banned ---
+    const banCheck = await client.query(
+      `SELECT reason FROM hwid_bans WHERE hwid = $1 LIMIT 1`,
+      [hwid]
+    );
+    if (banCheck.rows.length > 0) {
+      await logAttempt(client, key, hwid, ip, false, "hwid_banned");
+      return res.status(401).json({ error: "This device has been banned" });
+    }
+
     // --- Check 1: key exists ---
     if (!record) {
       await logAttempt(client, key, hwid, ip, false, "key_not_found");
